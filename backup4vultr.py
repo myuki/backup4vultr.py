@@ -9,13 +9,12 @@ from Vultr import Vultr
 apiToken: str = ""
 instanceID: str = ""
 description: str = ""
-configSnapshotsLimit: int = -1
 keepedSnapshotList: tuple = ()
 
 
 # Get config from JSON
 def getConfig(path: str):
-  global apiToken, instanceID, description, configSnapshotsLimit, keepedSnapshotList
+  global apiToken, instanceID, description, keepedSnapshotList
   # Check the file if exist
   if os.path.exists(path):
     with open(path, "r") as file:
@@ -27,8 +26,6 @@ def getConfig(path: str):
         instanceID = config["instanceID"]
       if "description" in config.keys():
         description = config["description"]
-      if "configSnapshotsLimit" in config.keys():
-        configSnapshotsLimit = config["configSnapshotsLimit"]
       if "keepedSnapshotList" in config.keys():
         keepedSnapshotList = config["keepedSnapshotList"]
 
@@ -46,17 +43,17 @@ if __name__ == "__main__":
       print()
       vultr.listSnapshots()
       sys.exit(0)
-    # Use snapshot backup and delete the oldest snapshot
+    # Use snapshot to backup
     elif sys.argv[1] == "backup":
       print("Backup...")
-      vultr.backup(instanceID, configSnapshotsLimit, keepedSnapshotList)
+      vultr.backup(instanceID, keepedSnapshotList)
     # Display the available command
     else:
       print("Error, command wrong")
       print("Command list:")
       print("list - List all instances and snapshots")
-      print("backup - Create a snapshot (Delete the oldest snapshot if snapshots reach the limit(10))")
+      print("backup - Backup by create a snapshot (Delete the oldest snapshot if snapshots reach the limit)")
   else:
     print("Command list:")
     print("list - List the instances and snapshots")
-    print("backup - Create a snapshot (Delete the oldest snapshot if snapshots reach the limit(10))")
+    print("backup - Backup by create a snapshot (Delete the oldest snapshot if snapshots reach the limit)")

@@ -12,10 +12,10 @@ Warning, this script use [Vultr APIv2](https://www.vultr.com/api/v2/) but snapsh
 
 ## Command
 
-```Bash
+```
 list - List all instances and snapshots
 
-backup - Create a snapshot
+backup - Backup by create a snapshot (Delete the oldest snapshot if snapshots reach the limit)
 ```
 
 ## config.json
@@ -27,7 +27,6 @@ If `config.json` doesn't exist, it will use the default value in `backup4vultr.p
   "apiToken": "",
   "instanceID": "",
   "description": "snapshot4vultr.py",
-  "configSnapshotsLimit": 10,
   "keepedSnapshotList": [
     "137e9227-657f-480d-a325-e643310d112b"
   ]
