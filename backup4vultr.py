@@ -46,7 +46,7 @@ if __name__ == "__main__":
     # Use snapshot to backup
     elif sys.argv[1] == "backup":
       print("Backup...")
-      vultr.backup(instanceID, keepedSnapshotList)
+      vultr.backup(instanceID, description, keepedSnapshotList)
     # Display the available command
     else:
       print("Error, command wrong")

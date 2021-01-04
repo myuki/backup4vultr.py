@@ -215,7 +215,7 @@ class Vultr:
         break
 
   # Backup instance
-  def backup(self, instanceID: str, keepedSnapshotList: tuple = ()):
+  def backup(self, instanceID: str, description: str = "", keepedSnapshotList: tuple = ()):
     # Check the instance ID
     if not self.checkInstanceID(instanceID):
       print("Instances ID is wrong, this is instance list:")
@@ -247,4 +247,4 @@ class Vultr:
       snapshotTotal = self.snapshotMeta["total"]
 
     # Create snapshot
-    self.createSnapshot(instanceID)
+    self.createSnapshot(instanceID, description)
