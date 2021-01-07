@@ -39,30 +39,30 @@ class Vultr:
     # Retry 3 times
     for i in range(self.retries):
       try:
-        r = requests.get("https://api.vultr.com/v2/instances", headers=self.httpHeaders, timeout=self.timeout)
+        response = requests.get("https://api.vultr.com/v2/instances", headers=self.httpHeaders, timeout=self.timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
         time.sleep(3)
       else:
         # Check respond
-        if r.status_code == 200:
-          instances: dict = json.loads(r.text)
+        if response.status_code == 200:
+          instances: dict = json.loads(response.text)
           self.instanceMeta = instances["meta"]
           self.instanceList = instances["instances"]
         else:
           print("Fail to get instance list")
-          if r.status_code == 400:
+          if response.status_code == 400:
             print("400 Bad Request")
-          elif r.status_code == 401:
+          elif response.status_code == 401:
             print("401 Unauthorized")
-          elif r.status_code == 403:
+          elif response.status_code == 403:
             print("403 Forbidden")
-          elif r.status_code == 404:
+          elif response.status_code == 404:
             print("404 Not Found")
           else:
-            print(r.status_code, "Unknown Error")
-          print(r.text)
+            print(response.status_code, "Unknown Error")
+          print(response.text)
           return False
         break
     return True
@@ -94,24 +94,24 @@ class Vultr:
     # Retry 3 times
     for i in range(self.retries):
       try:
-        r = requests.get("https://api.vultr.com/v2/snapshots", headers=self.httpHeaders, timeout=self.timeout)
+        response = requests.get("https://api.vultr.com/v2/snapshots", headers=self.httpHeaders, timeout=self.timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
         time.sleep(3)
       else:
         # Check respond
-        if r.status_code == 200:
-          snapshots: dict = json.loads(r.text)
+        if response.status_code == 200:
+          snapshots: dict = json.loads(response.text)
           self.snapshotMeta = snapshots["meta"]
           self.snapshotList = snapshots["snapshots"]
         else:
           print("Fail to get snapshot list")
-          if r.status_code == 401:
+          if response.status_code == 401:
             print("401 Unauthorized")
           else:
-            print(r.status_code, "Unknown Error")
-          print(r.text)
+            print(response.status_code, "Unknown Error")
+          print(response.text)
           return False
         break
     return True
@@ -127,7 +127,7 @@ class Vultr:
       print(instance["id"], instance["size"], instance["date_created"], instance["status"], instance["description"])
     return True
 
-  # Mark the keeped snapshot in List
+  # Mark the keeped snapshot in list
   def markKeepedSnapshot(self, id: str) -> bool:
     if "snapshotList" not in dir(self):
       if not self.getSnapshotList():
@@ -173,24 +173,26 @@ class Vultr:
     # Retry 3 times
     for i in range(self.retries):
       try:
-        r = requests.post("https://api.vultr.com/v2/snapshots", headers=self.httpHeaders, data=json.dumps(payload), timeout=self.timeout)
+        response = requests.post("https://api.vultr.com/v2/snapshots", headers=self.httpHeaders, data=json.dumps(payload), timeout=self.timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
         time.sleep(3)
       else:
         # Check respond
-        if r.status_code == 201:
-          print("Create snapshot success")
+        if response.status_code == 201:
+          responseJson: dict = json.loads(response.text)
+          snapshot: dict = responseJson["snapshot"]
+          print("Create snapshot", snapshot["id"], "success")
         else:
           print("Fail to create a snapshot")
-          if r.status_code == 400:
+          if response.status_code == 400:
             print("400 Bad Request")
-          elif r.status_code == 401:
+          elif response.status_code == 401:
             print("401 Unauthorized")
           else:
-            print(r.status_code, "Unknown Error")
-          print(r.text)
+            print(response.status_code, "Unknown Error")
+          print(response.text)
           return False
         break
     return True
@@ -204,14 +206,14 @@ class Vultr:
     # Retry 3 times
     for i in range(self.retries):
       try:
-        r = requests.delete("https://api.vultr.com/v2/snapshots/" + snapshotID, headers=self.httpHeaders, timeout=self.timeout)
+        response = requests.delete("https://api.vultr.com/v2/snapshots/" + snapshotID, headers=self.httpHeaders, timeout=self.timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
         time.sleep(3)
       else:
         # Check the respond
-        if r.status_code == 204:
+        if response.status_code == 204:
           # Delete in snapshot list
           for i in range(len(self.snapshotList)):
             deletedSnapshot: dict = self.snapshotList[i]
@@ -222,15 +224,15 @@ class Vultr:
           print("Delete the snapshot", snapshotID, "success")
         else:
           print("Fail to delete the snapshot")
-          if r.status_code == 400:
+          if response.status_code == 400:
             print("400 Bad Request")
-          elif r.status_code == 401:
+          elif response.status_code == 401:
             print("401 Unauthorized")
-          elif r.status_code == 404:
+          elif response.status_code == 404:
             print("404 Not Found")
           else:
-            print(r.status_code, "Unknown Error")
-          print(r.text)
+            print(response.status_code, "Unknown Error")
+          print(response.text)
           return False
         break
     return True
@@ -254,20 +256,20 @@ class Vultr:
     # Check the keeped snapshot if in the list
     for keepedSnapshot in keepedSnapshotList:
       if not self.checkSnapshotID(keepedSnapshot):
-        print("Please check the keeped snapshot,", keepedSnapshot, "not in the list")
+        print("Please check the keeped snapshot, snapshot", keepedSnapshot, "not in the list")
         return False
 
     # Mark the snapshot need be keeped
     for keepedSnapshot in keepedSnapshotList:
       if not self.markKeepedSnapshot(keepedSnapshot):
-        print("Fail to mark keeped snapshot")
+        print("Fail to mark the keeped snapshot", keepedSnapshot)
         return False
 
     # Delete the oldest snapshot if reach the snapshot limit
     snapshotTotal: int = self.snapshotMeta["total"]
     while snapshotTotal >= snapshotsLimit:
       if not self.deleteSnapshot(self.getOldestSnapshot()):
-        print("Fail to delete oldest snapshot")
+        print("Fail to delete the oldest snapshot")
         return False
       snapshotTotal = self.snapshotMeta["total"]
 
