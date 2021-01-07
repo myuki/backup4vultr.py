@@ -32,7 +32,7 @@ def getConfig(path: str):
 
 if __name__ == "__main__":
   # Init Vultr object
-  getConfig("config.json")
+  getConfig(sys.path[0] + "/config.json")
   vultr: Vultr = Vultr(apiToken)
 
   # Check command
