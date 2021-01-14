@@ -6,6 +6,10 @@ You can specify the limit or use the default limit (Every Vultr Account has 10 q
 
 By use `cron`, it can be used to auto backup Vultr Server.
 
+```
+0 0 */7 * * python3 .../backup4vultr.py/backup4vultr.py backup > /dev/null 2>&1
+```
+
 ## Vultr APIv2
 
 Warning, this script use [Vultr APIv2](https://www.vultr.com/api/v2/) but snapshot and instance ID still display as [APIv1](https://www.vultr.com/api/) on the website. You shuld run `backup4vultr.py list` before backup.
