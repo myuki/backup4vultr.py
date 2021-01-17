@@ -24,15 +24,6 @@ class Vultr:
     self.apiToken = apiToken
     self.httpHeaders["Authorization"] = "Bearer " + apiToken
 
-  # Check the Instance ID if in the list
-  def checkInstanceID(self, inputInstancesID) -> bool:
-    if "instanceList" not in dir(self):
-      self.getInstanceList()
-    for instance in self.instanceList:
-      if inputInstancesID == instance["id"]:
-        return True
-    return False
-
   # Get the list of instances
   # curl --location --request GET 'https://api.vultr.com/v2/instances' --header 'Authorization: Bearer {api-key}'
   def getInstanceList(self) -> bool:
@@ -67,26 +58,31 @@ class Vultr:
         break
     return True
 
-  # List all instances
-  def listInstances(self) -> bool:
+  # Check whether the instance list exist and get the instance list if doesn't exist
+  def checkInstanceList(self) -> bool:
     if "instanceList" not in dir(self):
       if not self.getInstanceList():
         return False
+    return True
+
+  # Check the Instance ID if in the list
+  def checkInstanceID(self, inputInstancesID) -> bool:
+    if not self.checkInstanceList():
+      return False
+    for instance in self.instanceList:
+      if inputInstancesID == instance["id"]:
+        return True
+    return False
+
+  # List all instances
+  def listInstances(self) -> bool:
+    if not self.checkInstanceList():
+      return False
     print("Instance List:")
     print("ID                                   Label RAM  Main IP")
     for instance in self.instanceList:
       print(instance["id"], instance["label"], instance["ram"], instance["main_ip"])
     return True
-
-  # Check the Snapshot ID if in the list
-  def checkSnapshotID(self, inputSnapshotID) -> bool:
-    if "snapshotList" not in dir(self):
-      if not self.getSnapshotList():
-        return False
-    for snapshot in self.snapshotList:
-      if inputSnapshotID == snapshot["id"]:
-        return True
-    return False
 
   # Get the list of snapshots
   # curl --location --request GET "https://api.vultr.com/v2/snapshots" --header "Authorization: Bearer {api-key}"
@@ -116,34 +112,47 @@ class Vultr:
         break
     return True
 
-  # List all snapshots
-  def listSnapshots(self) -> bool:
+  # Check whether the snapshot list exist and get the snapshot list if doesn't exist
+  def checkSnapshotList(self) -> bool:
     if "snapshotList" not in dir(self):
       if not self.getSnapshotList():
         return False
-    print("Snapshot List:")
-    print("ID                                   Size        Created Date              Status   Description")
-    for instance in self.snapshotList:
-      print(instance["id"], instance["size"], instance["date_created"], instance["status"], instance["description"])
     return True
 
-  # Mark the keeped snapshot in list
-  def markKeepedSnapshot(self, id: str) -> bool:
-    if "snapshotList" not in dir(self):
-      if not self.getSnapshotList():
-        return False
+  # Check the Snapshot ID if in the list
+  def checkSnapshotID(self, inputSnapshotID) -> bool:
+    if not self.checkSnapshotList():
+      return False
+    for snapshot in self.snapshotList:
+      if inputSnapshotID == snapshot["id"]:
+        return True
+    return False
+
+  # List all snapshots
+  def listSnapshots(self) -> bool:
+    if not self.checkSnapshotList():
+      return False
+    print("Snapshot List:")
+    print("ID                                   Size        Created Date              Status   Description")
+    for snapshot in self.snapshotList:
+      print(snapshot["id"], snapshot["size"], snapshot["date_created"], snapshot["status"], "\"" + snapshot["description"] + "\"")
+    return True
+
+  # Mark the reserved snapshot in list
+  def markReservedSnapshot(self, id: str) -> bool:
+    if not self.checkSnapshotList():
+      return False
     for snapshot in self.snapshotList:
       if id in snapshot["id"]:
-        snapshot["keepedFlag"] = 1
+        snapshot["reservedFlag"] = 1
     return True
 
   # Get the oldest snapshot's ID
   # Format: yyyy-mm-ddThh:mm:ss+00:00
   def getOldestSnapshot(self) -> str:
-    if "snapshotList" not in dir(self):
-      if not self.getSnapshotList():
-        print("Fail to get the oldest snapshot's ID")
-        return ""
+    if not self.checkSnapshotList():
+      print("Fail to get the oldest snapshot's ID")
+      return ""
     # Get current time
     timeRegex = r"^(\d{4})-(\d\d)-(\d\d)T(\d\d)\:(\d\d)\:(\d\d)"
     nowMatch = re.match(timeRegex, time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time())))
@@ -151,7 +160,7 @@ class Vultr:
     # Compare all snapshots
     oldestID: str = ""
     for snapshot in self.snapshotList:
-      if "keepedFlag" not in snapshot:
+      if "reservedFlag" not in snapshot:
         snapshotDateMatch = re.match(timeRegex, snapshot["date_created"])
         for i in range(6):
           # Compare time
@@ -163,8 +172,19 @@ class Vultr:
             break
     return oldestID
 
+  # Get Snapshot's ID by description
+  def getSnapshotsByDescription(self, descriptionList: set) -> set:
+    resultList: set = set()
+    if not self.checkSnapshotList():
+      return resultList
+    for description in descriptionList:
+      for snapshot in self.snapshotList:
+        if description in snapshot["description"]:
+          resultList.add(snapshot["id"])
+    return resultList
+
   # Create a new snapshot for specific VM
-  # curl --location --request POST "https://api.vultr.com/v2/snapshots" --header "Authorization: Bearer {api-key}" --header "Content-Type: application/json" --data-raw "{"instance_id": 38863911, "description" : "my snapshot"}"
+  # curl --location --request POST "https://api.vultr.com/v2/snapshots" --header "Authorization: Bearer {api-key}" --header "Content-Type: application/json" --data-raw "{"instance_id": "a632673e-2fd5-4ff1-b251-2e28e7b65504", "description" : "my snapshot"}"
   def createSnapshot(self, instanceID: str, description: str = "") -> bool:
     if self.snapshotMeta["total"] >= 10:
       print("Fail to create a snapshot, reach the limit")
@@ -238,7 +258,7 @@ class Vultr:
     return True
 
   # Backup instance
-  def backup(self, instanceID: str, description: str = "", keepedSnapshotList: tuple = ()) -> bool:
+  def backup(self, instanceID: str, description: str = "", reservedSnapshotList: set = set()) -> bool:
     # Check the instance ID
     if not self.checkInstanceID(instanceID):
       print("Instances ID is wrong, this is instance list:")
@@ -247,22 +267,22 @@ class Vultr:
 
     # Check the limit of snapshot, each account has 10 quota
     snapshotsLimit: int = 10
-    keepedLength: int = len(keepedSnapshotList)
-    if keepedLength == snapshotsLimit:
+    reservedLength: int = len(reservedSnapshotList)
+    if reservedLength == snapshotsLimit:
       print("Snapshots reach the limit")
-      print("Please remove at least %d in keepedSnapshotList." % (snapshotsLimit - keepedLength + 1))
+      print("Please remove at least %d in reservedSnapshotList." % (snapshotsLimit - reservedLength + 1))
       return False
 
-    # Check the keeped snapshot if in the list
-    for keepedSnapshot in keepedSnapshotList:
-      if not self.checkSnapshotID(keepedSnapshot):
-        print("Please check the keeped snapshot, snapshot", keepedSnapshot, "not in the list")
+    # Check the reserved snapshot if in the list
+    for reservedSnapshot in reservedSnapshotList:
+      if not self.checkSnapshotID(reservedSnapshot):
+        print("Please check the reserved snapshot, snapshot", reservedSnapshot, "not in the list")
         return False
 
-    # Mark the snapshot need be keeped
-    for keepedSnapshot in keepedSnapshotList:
-      if not self.markKeepedSnapshot(keepedSnapshot):
-        print("Fail to mark the keeped snapshot", keepedSnapshot)
+    # Mark the snapshot need be reserved
+    for reservedSnapshot in reservedSnapshotList:
+      if not self.markReservedSnapshot(reservedSnapshot):
+        print("Fail to mark the reserved snapshot", reservedSnapshot)
         return False
 
     # Delete the oldest snapshot if reach the snapshot limit

@@ -9,12 +9,13 @@ from Vultr import Vultr
 apiToken: str = ""
 instanceID: str = ""
 description: str = ""
-keepedSnapshotList: tuple = ()
+reservedSnapshotList: set = set()
+reservedSnapshotDescription: set = set()
 
 
 # Get config from JSON
 def getConfig(path: str):
-  global apiToken, instanceID, description, keepedSnapshotList
+  global apiToken, instanceID, description, reservedSnapshotList, reservedSnapshotDescription
   # Check the file if exist
   if os.path.exists(path):
     with open(path, "r") as file:
@@ -26,8 +27,10 @@ def getConfig(path: str):
         instanceID = config["instanceID"]
       if "description" in config.keys():
         description = config["description"]
-      if "keepedSnapshotList" in config.keys():
-        keepedSnapshotList = config["keepedSnapshotList"]
+      if "reservedSnapshotList" in config.keys():
+        reservedSnapshotList = set(config["reservedSnapshotList"])
+      if "reservedSnapshotDescription" in config.keys():
+        reservedSnapshotDescription = set(config["reservedSnapshotDescription"])
 
 
 if __name__ == "__main__":
@@ -45,9 +48,11 @@ if __name__ == "__main__":
       sys.exit(0)
     # Use snapshot to backup
     elif sys.argv[1] == "backup":
+      if reservedSnapshotDescription:
+        reservedSnapshotList = reservedSnapshotList.union(vultr.getSnapshotsByDescription(reservedSnapshotDescription))
       print("Backup...")
-      vultr.backup(instanceID, description, keepedSnapshotList)
-    # Display the available command
+      vultr.backup(instanceID, description, reservedSnapshotList)
+    # Display available commands
     else:
       print("Error, command wrong")
       print("Command list:")

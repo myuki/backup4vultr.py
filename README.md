@@ -31,8 +31,14 @@ If `config.json` doesn't exist, it will use the default value in `backup4vultr.p
   "apiToken": "",
   "instanceID": "",
   "description": "snapshot4vultr.py",
-  "keepedSnapshotList": [
+  "reservedSnapshotList": [
     "137e9227-657f-480d-a325-e643310d112b"
+  ],
+  "reservedSnapshotDescription": [
+    "Description substring1",
+    "Description substring2"
   ]
 }
 ```
+
+You can specify which snapshots need be reserved. Also, you can use description to mark snapshots to be reserved. Each value is independent and will take effect if the description includes the value.
