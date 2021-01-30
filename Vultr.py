@@ -1,3 +1,4 @@
+import datetime
 import json
 import re
 import requests
@@ -148,28 +149,23 @@ class Vultr:
     return True
 
   # Get the oldest snapshot's ID
-  # Format: yyyy-mm-ddThh:mm:ss+00:00
-  def getOldestSnapshot(self) -> str:
+  # ISO 8601 Format: yyyy-mm-ddThh:mm:ss+00:00
+  def getOldestBackupSnapshot(self) -> str:
     if not self.checkSnapshotList():
       print("Fail to get the oldest snapshot's ID")
       return ""
     # Get current time
-    timeRegex = r"^(\d{4})-(\d\d)-(\d\d)T(\d\d)\:(\d\d)\:(\d\d)"
-    nowMatch = re.match(timeRegex, time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time())))
-    oldestDate: list = (nowMatch.group(1), nowMatch.group(2), nowMatch.group(3), nowMatch.group(4), nowMatch.group(5), nowMatch.group(6))
+    timeNow: datetime.datetime = datetime.datetime.now().astimezone()
+    oldestDate: datetime.datetime = timeNow
+
     # Compare all snapshots
     oldestID: str = ""
     for snapshot in self.snapshotList:
       if "reservedFlag" not in snapshot:
-        snapshotDateMatch = re.match(timeRegex, snapshot["date_created"])
-        for i in range(6):
-          # Compare time
-          if snapshotDateMatch.group(i + 1) > oldestDate[i]:
-            break
-          elif snapshotDateMatch.group(i + 1) < oldestDate[i]:
-            oldestID = snapshot["id"]
-            oldestDate = (snapshotDateMatch.group(1), snapshotDateMatch.group(2), snapshotDateMatch.group(3), snapshotDateMatch.group(4), snapshotDateMatch.group(5), snapshotDateMatch.group(6))
-            break
+        snapshotDateDate = datetime.datetime.strptime(snapshot["date_created"], "%Y-%m-%dT%H:%M:%S%z")
+        if snapshotDateDate < oldestDate:
+          oldestDate = snapshotDateDate
+          oldestID = snapshot["id"]
     return oldestID
 
   # Get Snapshot's ID by description
@@ -217,7 +213,7 @@ class Vultr:
         break
     return True
 
-  # Delete the snapshot
+  # Delete snapshot
   # curl --location --request DELETE "https://api.vultr.com/v2/snapshots/{snapshot-id}" --header "Authorization: Bearer {api-key}"
   def deleteSnapshot(self, snapshotID: str) -> bool:
     if "snapshotList" not in dir(self):
@@ -241,7 +237,7 @@ class Vultr:
               del self.snapshotList[i]
               self.snapshotMeta["total"] -= 1
               break
-          print("Delete the snapshot", snapshotID, "success")
+          print("Delete snapshot", snapshotID, "success")
         else:
           print("Fail to delete the snapshot")
           if response.status_code == 400:
@@ -288,7 +284,7 @@ class Vultr:
     # Delete the oldest snapshot if reach the snapshot limit
     snapshotTotal: int = self.snapshotMeta["total"]
     while snapshotTotal >= snapshotsLimit:
-      if not self.deleteSnapshot(self.getOldestSnapshot()):
+      if not self.deleteSnapshot(self.getOldestBackupSnapshot()):
         print("Fail to delete the oldest snapshot")
         return False
       snapshotTotal = self.snapshotMeta["total"]
