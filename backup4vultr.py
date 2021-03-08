@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+from vultr import *
+
 import json
 import os
 import sys
-from Vultr import Vultr
 
 # Default Value
 apiToken: str = ""
