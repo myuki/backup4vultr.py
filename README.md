@@ -38,3 +38,7 @@ If `config.json` doesn't exist, it will use the default value in `backup4vultr.p
 ```
 
 You can specify which snapshots need be reserved. Also, you can use description to mark snapshots to be reserved. Each value is independent and will take effect if the description includes the value.
+
+## Dependencies
+
+[requests](https://github.com/psf/requests)
