@@ -2,7 +2,7 @@
 
 Use snapshot to backup Vultr VPS. It can delete the oldest snapshot when it reaches the limit.
 
-You can specify the limit or use the default limit (Every Vultr Account has 10 quotas). You also can specify which snapshot should be reserved and not be deleted.
+You can specify the limit or use the default limit (Each Vultr account has 10 quotas). You also can specify which snapshot should be reserved and not be deleted.
 
 By use `cron`, it can be used to auto backup Vultr Server.
 
