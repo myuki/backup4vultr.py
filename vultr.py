@@ -1,17 +1,16 @@
 import datetime
 import json
-import re
 import requests
 import sys
 import time
 
 
 class Vultr:
-  apiToken: str
-  instanceMeta: dict
-  instanceList: list
-  snapshotMeta: dict
-  snapshotList: list
+  __apiToken: str
+  __instanceMeta: dict
+  __instanceList: list
+  __snapshotMeta: dict
+  __snapshotList: list
 
   httpHeaders: dict = {"Content-Type": "application/json"}
   retries: int = 3  # Retry 3 times
@@ -22,7 +21,7 @@ class Vultr:
     if apiToken == "":
       print("API Token is empty")
       sys.exit(1)
-    self.apiToken = apiToken
+    self.__apiToken = apiToken
     self.httpHeaders["Authorization"] = "Bearer " + apiToken
 
   # Get the list of instances
@@ -40,8 +39,8 @@ class Vultr:
         # Check respond
         if response.status_code == 200:
           instances: dict = json.loads(response.text)
-          self.instanceMeta = instances["meta"]
-          self.instanceList = instances["instances"]
+          self.__instanceMeta = instances["meta"]
+          self.__instanceList = instances["instances"]
         else:
           print("Fail to get instance list")
           if response.status_code == 400:
@@ -61,7 +60,7 @@ class Vultr:
 
   # Check whether the instance list exist and get the instance list if doesn't exist
   def checkInstanceList(self) -> bool:
-    if "instanceList" not in dir(self):
+    if "_Vultr__instanceList" not in dir(self):
       if not self.getInstanceList():
         return False
     return True
@@ -70,7 +69,7 @@ class Vultr:
   def checkInstanceID(self, inputInstancesID) -> bool:
     if not self.checkInstanceList():
       return False
-    for instance in self.instanceList:
+    for instance in self.__instanceList:
       if inputInstancesID == instance["id"]:
         return True
     return False
@@ -81,7 +80,7 @@ class Vultr:
       return False
     print("Instance List:")
     print("ID                                   Label RAM  Main IP")
-    for instance in self.instanceList:
+    for instance in self.__instanceList:
       print(instance["id"], instance["label"], instance["ram"], instance["main_ip"])
     return True
 
@@ -100,8 +99,8 @@ class Vultr:
         # Check respond
         if response.status_code == 200:
           snapshots: dict = json.loads(response.text)
-          self.snapshotMeta = snapshots["meta"]
-          self.snapshotList = snapshots["snapshots"]
+          self.__snapshotMeta = snapshots["meta"]
+          self.__snapshotList = snapshots["snapshots"]
         else:
           print("Fail to get snapshot list")
           if response.status_code == 401:
@@ -115,7 +114,7 @@ class Vultr:
 
   # Check whether the snapshot list exist and get the snapshot list if doesn't exist
   def checkSnapshotList(self) -> bool:
-    if "snapshotList" not in dir(self):
+    if "_Vultr__snapshotList" not in dir(self):
       if not self.getSnapshotList():
         return False
     return True
@@ -124,7 +123,7 @@ class Vultr:
   def checkSnapshotID(self, inputSnapshotID) -> bool:
     if not self.checkSnapshotList():
       return False
-    for snapshot in self.snapshotList:
+    for snapshot in self.__snapshotList:
       if inputSnapshotID == snapshot["id"]:
         return True
     return False
@@ -135,7 +134,7 @@ class Vultr:
       return False
     print("Snapshot List:")
     print("ID                                   Size        Created Date              Status   Description")
-    for snapshot in self.snapshotList:
+    for snapshot in self.__snapshotList:
       print(snapshot["id"], snapshot["size"], snapshot["date_created"], snapshot["status"], "\"" + snapshot["description"] + "\"")
     return True
 
@@ -143,7 +142,7 @@ class Vultr:
   def markReservedSnapshot(self, id: str) -> bool:
     if not self.checkSnapshotList():
       return False
-    for snapshot in self.snapshotList:
+    for snapshot in self.__snapshotList:
       if id in snapshot["id"]:
         snapshot["reservedFlag"] = 1
     return True
@@ -155,12 +154,11 @@ class Vultr:
       print("Fail to get the oldest snapshot's ID")
       return ""
     # Get current time
-    timeNow: datetime.datetime = datetime.datetime.now().astimezone()
-    oldestDate: datetime.datetime = timeNow
+    oldestDate: datetime.datetime = datetime.datetime.now().astimezone()
 
     # Compare all snapshots
     oldestID: str = ""
-    for snapshot in self.snapshotList:
+    for snapshot in self.__snapshotList:
       if "reservedFlag" not in snapshot:
         snapshotDateDate = datetime.datetime.strptime(snapshot["date_created"], "%Y-%m-%dT%H:%M:%S%z")
         if snapshotDateDate < oldestDate:
@@ -174,7 +172,7 @@ class Vultr:
     if not self.checkSnapshotList():
       return resultList
     for description in descriptionList:
-      for snapshot in self.snapshotList:
+      for snapshot in self.__snapshotList:
         if description in snapshot["description"]:
           resultList.add(snapshot["id"])
     return resultList
@@ -182,7 +180,7 @@ class Vultr:
   # Create a new snapshot for specific VM
   # curl --location --request POST "https://api.vultr.com/v2/snapshots" --header "Authorization: Bearer {api-key}" --header "Content-Type: application/json" --data-raw "{"instance_id": "a632673e-2fd5-4ff1-b251-2e28e7b65504", "description" : "my snapshot"}"
   def createSnapshot(self, instanceID: str, description: str = "") -> bool:
-    if self.snapshotMeta["total"] >= 10:
+    if self.__snapshotMeta["total"] >= 10:
       print("Fail to create a snapshot, reach the limit")
       return False
     payload = {"instance_id": instanceID, "description": description}
@@ -231,11 +229,11 @@ class Vultr:
         # Check the respond
         if response.status_code == 204:
           # Delete in snapshot list
-          for i in range(len(self.snapshotList)):
-            deletedSnapshot: dict = self.snapshotList[i]
+          for i in range(len(self.__snapshotList)):
+            deletedSnapshot: dict = self.__snapshotList[i]
             if snapshotID == deletedSnapshot["id"]:
-              del self.snapshotList[i]
-              self.snapshotMeta["total"] -= 1
+              del self.__snapshotList[i]
+              self.__snapshotMeta["total"] -= 1
               break
           print("Delete snapshot", snapshotID, "success")
         else:
@@ -282,12 +280,12 @@ class Vultr:
         return False
 
     # Delete the oldest snapshot if reach the snapshot limit
-    snapshotTotal: int = self.snapshotMeta["total"]
+    snapshotTotal: int = self.__snapshotMeta["total"]
     while snapshotTotal >= snapshotsLimit:
       if not self.deleteSnapshot(self.getOldestBackupSnapshot()):
         print("Fail to delete the oldest snapshot")
         return False
-      snapshotTotal = self.snapshotMeta["total"]
+      snapshotTotal = self.__snapshotMeta["total"]
 
     # Create snapshot
     if not self.createSnapshot(instanceID, description):
