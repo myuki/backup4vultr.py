@@ -7,14 +7,13 @@ import time
 
 class Vultr:
   __apiToken: str
-  __instanceMeta: dict
   __instanceList: list
   __snapshotMeta: dict
   __snapshotList: list
 
-  httpHeaders: dict = {"Content-Type": "application/json"}
-  retries: int = 3  # Retry 3 times
-  timeout: int = 5
+  __httpHeaders: dict = {"Content-Type": "application/json"}
+  __retries: int = 3  # Retry 3 times
+  __timeout: int = 5
 
   def __init__(self, apiToken: str):
     # Check the API token and init vultr object
@@ -22,15 +21,15 @@ class Vultr:
       print("API Token is empty")
       sys.exit(1)
     self.__apiToken = apiToken
-    self.httpHeaders["Authorization"] = "Bearer " + apiToken
+    self.__httpHeaders["Authorization"] = "Bearer " + self.__apiToken
 
   # Get the list of instances
   # curl --location --request GET 'https://api.vultr.com/v2/instances' --header 'Authorization: Bearer {api-key}'
   def getInstanceList(self) -> bool:
     # Retry 3 times
-    for i in range(self.retries):
+    for i in range(self.__retries):
       try:
-        response = requests.get("https://api.vultr.com/v2/instances", headers=self.httpHeaders, timeout=self.timeout)
+        response = requests.get("https://api.vultr.com/v2/instances", headers=self.__httpHeaders, timeout=self.__timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
@@ -39,7 +38,6 @@ class Vultr:
         # Check respond
         if response.status_code == 200:
           instances: dict = json.loads(response.text)
-          self.__instanceMeta = instances["meta"]
           self.__instanceList = instances["instances"]
         else:
           print("Fail to get instance list")
@@ -88,9 +86,9 @@ class Vultr:
   # curl --location --request GET "https://api.vultr.com/v2/snapshots" --header "Authorization: Bearer {api-key}"
   def getSnapshotList(self) -> bool:
     # Retry 3 times
-    for i in range(self.retries):
+    for i in range(self.__retries):
       try:
-        response = requests.get("https://api.vultr.com/v2/snapshots", headers=self.httpHeaders, timeout=self.timeout)
+        response = requests.get("https://api.vultr.com/v2/snapshots", headers=self.__httpHeaders, timeout=self.__timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
@@ -185,9 +183,9 @@ class Vultr:
       return False
     payload = {"instance_id": instanceID, "description": description}
     # Retry 3 times
-    for i in range(self.retries):
+    for i in range(self.__retries):
       try:
-        response = requests.post("https://api.vultr.com/v2/snapshots", headers=self.httpHeaders, data=json.dumps(payload), timeout=self.timeout)
+        response = requests.post("https://api.vultr.com/v2/snapshots", headers=self.__httpHeaders, data=json.dumps(payload), timeout=self.__timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
@@ -218,9 +216,9 @@ class Vultr:
       if not self.getSnapshotList():
         return False
     # Retry 3 times
-    for i in range(self.retries):
+    for i in range(self.__retries):
       try:
-        response = requests.delete("https://api.vultr.com/v2/snapshots/" + snapshotID, headers=self.httpHeaders, timeout=self.timeout)
+        response = requests.delete("https://api.vultr.com/v2/snapshots/" + snapshotID, headers=self.__httpHeaders, timeout=self.__timeout)
       except Exception as e:
         print(e)
         print("Error, try again after 3s")
